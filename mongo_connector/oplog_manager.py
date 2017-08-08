@@ -395,16 +395,28 @@ class OplogThread(threading.Thread):
             # Field does not exactly match any key in the update doc.
             return list(find_partial_matches())
 
+    def _pop_excluded_fields_helper(doc, exclude_fields):
+        temp_doc = doc
+        for path_idx, path in enumerate(exclude_fields[:-1]):
+            if isinstance(temp_doc, list):
+                for item in temp_doc:
+                    _pop_excluded_fields_helper(item, exclude_fields[path_idx:])
+                return
+            else:
+                temp_doc = temp_doc[path]
+
+        if isinstance(temp_doc, list):
+            for item in temp_doc:
+                item.pop(exclude_fields[-1])
+        else:
+            temp_doc.pop(exclude_fields[-1])
+
     def _pop_excluded_fields(self, doc, exclude_fields, update=False):
         # Remove all the fields that were passed in exclude_fields.
         find_fields = self._find_update_fields if update else self._find_field
         for field in exclude_fields:
             for path, _ in find_fields(field, doc):
-                # Delete each matching field in the original document.
-                temp_doc = doc
-                for p in path[:-1]:
-                    temp_doc = temp_doc[p]
-                temp_doc.pop(path[-1])
+                _pop_excluded_fields_helper(doc, path)
 
         return doc  # Need this to be similar to copy_included_fields.
 
