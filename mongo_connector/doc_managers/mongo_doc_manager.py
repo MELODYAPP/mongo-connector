@@ -147,7 +147,10 @@ class DocManager(DocManagerBase):
             new_db, coll = self.command_helper.map_collection(
                 db, doc['create'])
             if new_db:
-                self.mongo[new_db].create_collection(coll)
+                try:
+                    self.mongo[new_db].create_collection(coll)
+                except Exception as e:
+                    LOG.exception("Exception while creating collection:")
 
         if doc.get('drop'):
             new_db, coll = self.command_helper.map_collection(
